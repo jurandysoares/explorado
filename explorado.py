@@ -15,12 +15,13 @@ import getpass
 SERVIDOR = ''
 DOMINIO = ''
 
-base = 'dc='+',dc='.join(DOMINIO.lower().split('.'))
+DOMINIO = DOMINIO.lower()
+base = 'dc='+',dc='.join(DOMINIO.split('.'))
 
 usuario = ''
 cont = 3
 while (not usuario) and (cont > 0):
-    matricula = raw_input('Usuário: ')
+    usuario = raw_input('Usuário: ')
     cont -= 1
 
 if not usuario: sys.exit(1)
