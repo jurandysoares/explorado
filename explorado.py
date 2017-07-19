@@ -10,10 +10,12 @@ import getpass
 # Para descobrir o nome de seu servidor, execute, no Windows, 
 # via Prompt do DOS (cmd.exe): 
 #  echo %LOGONSERVER%
-#  echo %DNSDOMAIN%
+#  echo %USERDNSDOMAIN%
 
 SERVIDOR = ''
 DOMINIO = ''
+
+base = 'dc='+',dc='.join(DOMINIO.lower().split('.'))
 
 usuario = ''
 cont = 3
@@ -35,10 +37,7 @@ try:
 except:
    print('Sinto muito, aconteceu algum problema.')
 
-base = 'dc='+',dc='.join(DOMINIO.split('.'))
-
 def consulta_dados(conta):
-   base
    criteria = "(&(objectClass=user)(sAMAccountName={}))".format(conta)
    attributes = None
    result = l.search_s(base, ldap.SCOPE_SUBTREE, criteria, attributes)
@@ -49,7 +48,6 @@ def consulta_dados(conta):
 
 
 def consulta_grupos(conta):
-   base = "dc=ifrn, dc=local"
    criteria = "(&(objectClass=user)(sAMAccountName={}))".format(conta)
    attributes = ['memberOf']
    result = l.search_s(base, ldap.SCOPE_SUBTREE, criteria, attributes)
