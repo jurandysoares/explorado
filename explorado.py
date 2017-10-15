@@ -6,60 +6,77 @@ import atexit
 import os
 import sys
 import getpass
+import struct
 
-# Para descobrir o nome de seu servidor, execute, no Windows, 
-# via Prompt do DOS (cmd.exe): 
+# To find out the logon server, run, on Windows,
+# in command prompt (cmd.exe): 
 #  echo %LOGONSERVER%
 #  echo %USERDNSDOMAIN%
 
-SERVIDOR = ''
-DOMINIO = ''
+SERVER = ''
+DOMAIN = ''
 
-DOMINIO = DOMINIO.lower()
-base = 'dc='+',dc='.join(DOMINIO.split('.'))
+DOMAIN = DOMAIN.lower()
+base = 'dc='+',dc='.join(DOMAIN.split('.'))
 
-usuario = ''
+user = ''
 cont = 3
-while (not usuario) and (cont > 0):
-    usuario = raw_input('Usuário: ')
+while (not user) and (cont > 0):
+    user = raw_input('Username: ')
     cont -= 1
 
-if not usuario: sys.exit(1)
+if not user: sys.exit(1)
 
-senha = getpass.getpass()
+password = getpass.getpass()
 
-l = ldap.initialize(servidor)
+l = ldap.initialize('ldap://{}'.format(SERVER))
 try:
    l.protocol_version = ldap.VERSION3
    l.set_option(ldap.OPT_REFERRALS, 0)
-   bind = l.simple_bind_s(usuario+"@"+DOMINIO, senha)
+   bind = l.simple_bind_s(user+"@"+DOMAIN, password)
    atexit.register(lambda: l.unbind())
 
 except:
-   print('Sinto muito, aconteceu algum problema.')
+   print('Sorry, we\'ve got some problem.')
 
-def consulta_dados(conta):
-   criteria = "(&(objectClass=user)(sAMAccountName={}))".format(conta)
+# Function copied from:
+# https://stackoverflow.com/questions/33188413/python-code-to-convert-from-objectsid-to-sid-representation
+def convert_sid(binary):
+    version = struct.unpack('B', binary[0])[0]
+    # I do not know how to treat version != 1 (it does not exist yet)
+    assert version == 1, version
+    length = struct.unpack('B', binary[1])[0]
+    authority = struct.unpack('>Q', '\x00\x00' + binary[2:8])[0]
+    string = 'S-%d-%d' % (version, authority)
+    binary = binary[8:]
+    assert len(binary) == 4 * length
+    for i in xrange(length):
+        value = struct.unpack('<L', binary[4*i:4*(i+1)])[0]
+        string += '-%d' % (value)
+    return string
+
+def query_account(acct_name):
+   criteria = "(&(objectClass=user)(sAMAccountName={}))".format(acct_name)
    attributes = None
    result = l.search_s(base, ldap.SCOPE_SUBTREE, criteria, attributes)
  
    results = [entry for dn, entry in result if isinstance(entry, dict)]
-   dados = results[0] if len(results) == 1 else {}
-   return dados
+   data = results[0] if len(results) == 1 else {}
+   return data
 
 
-def consulta_grupos(conta):
-   criteria = "(&(objectClass=user)(sAMAccountName={}))".format(conta)
+def query_groups(acct_name):
+   criteria = "(&(objectClass=user)(sAMAccountName={}))".format(acct_name)
    attributes = ['memberOf']
    result = l.search_s(base, ldap.SCOPE_SUBTREE, criteria, attributes)
  
    results = [entry for dn, entry in result if isinstance(entry, dict)]
-   dados = results[0] if len(results) == 1 else {}
-   dn_grupos = dados['memberOf'] 
-   grupos = []
-   for dn_g in dn_grupos:
-      nome_grupo = dn_g.split(',')[0].split('=')[1].lower()
-      if not ' ' in nome_grupo:
-         grupos.append(nome_grupo)
+   data = results[0] if len(results) == 1 else {}
+   dn_groups = data['memberOf'] 
+   groups = []
+   for dn_g in dn_groups:
+      group_name = dn_g.split(',')[0].split('=')[1].lower()
+      if not ' ' in group_name:
+         groups.append(group_name)
    
-   return grupos
+   return groups
