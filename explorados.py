@@ -28,22 +28,20 @@ if not user: sys.exit(1)
 
 password = getpass.getpass()
 
-# Secure LDAP connection: https://stackoverflow.com/questions/7716562/pythonldapssl
-ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
-l = ldap.initialize('ldaps://{}'.format(SERVER))
-l.set_option(ldap.OPT_REFERRALS, 0)
-l.set_option(ldap.OPT_PROTOCOL_VERSION, 3)
-l.set_option(ldap.OPT_X_TLS,ldap.OPT_X_TLS_DEMAND)
-l.set_option( ldap.OPT_X_TLS_DEMAND, True )
-l.set_option( ldap.OPT_DEBUG_LEVEL, 255 )
 try:
-   l.protocol_version = ldap.VERSION3
-   l.set_option(ldap.OPT_REFERRALS, 0)
-   bind = l.simple_bind_s(user+"@"+DOMAIN, password)
-   atexit.register(lambda: l.unbind())
+    # Secure LDAP connection: https://stackoverflow.com/questions/7716562/pythonldapssl
+    ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
+    l = ldap.initialize('ldaps://{}'.format(SERVER))
+    l.set_option(ldap.OPT_REFERRALS, 0)
+    l.set_option(ldap.OPT_PROTOCOL_VERSION, 3)
+    l.set_option(ldap.OPT_X_TLS,ldap.OPT_X_TLS_DEMAND)
+    l.set_option( ldap.OPT_X_TLS_DEMAND, True )
+    l.set_option( ldap.OPT_DEBUG_LEVEL, 255 )
+    bind = l.simple_bind_s(user+"@"+DOMAIN, password)
+    atexit.register(lambda: l.unbind())
 
 except:
-   print('Sorry, we\'ve got some problem.')
+    print('Sorry, we\'ve got some problem.')
 
 # Function copied from:
 # https://stackoverflow.com/questions/33188413/python-code-to-convert-from-objectsid-to-sid-representation
