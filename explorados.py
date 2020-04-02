@@ -21,7 +21,7 @@ base = 'dc='+',dc='.join(DOMAIN.split('.'))
 user = ''
 cont = 3
 while (not user) and (cont > 0):
-    user = raw_input('Username: ')
+    user = input('Username: ')
     cont -= 1
 
 if not user: sys.exit(1)
