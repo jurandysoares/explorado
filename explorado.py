@@ -8,13 +8,18 @@ import sys
 import getpass
 import struct
 
-# To find out the logon server, run, on Windows,
-# in command prompt (cmd.exe): 
+# Find out your logon server (LOGONSERVER) and DNS domain name (USERDNSDOMAIN).
+# After that, replace the variables bellow accordinly.
+# Commands to run on PowerShell (pwsh.exe): 
+#  $env:LOGONSERVER
+#  $env:USERDNSDOMAIN
+#
+# In case you prefer the command prompt (cmd.exe), run the commands: 
 #  echo %LOGONSERVER%
 #  echo %USERDNSDOMAIN%
 
-SERVER = ''
-DOMAIN = ''
+SERVER = '' # The value of LOGONSERVER environment variable
+DOMAIN = '' # The value of USERDNSDOMAIN environment variable
 
 DOMAIN = DOMAIN.lower()
 base = 'dc='+',dc='.join(DOMAIN.split('.'))
@@ -22,7 +27,7 @@ base = 'dc='+',dc='.join(DOMAIN.split('.'))
 user = ''
 cont = 3
 while (not user) and (cont > 0):
-    user = raw_input('Username: ')
+    user = input('Username: ')
     cont -= 1
 
 if not user: sys.exit(1)
@@ -34,10 +39,13 @@ try:
    l.protocol_version = ldap.VERSION3
    l.set_option(ldap.OPT_REFERRALS, 0)
    bind = l.simple_bind_s(user+"@"+DOMAIN, password)
+   del password # To avoid memory leak
    atexit.register(lambda: l.unbind())
 
 except:
-   print('Sorry, we\'ve got some problem.')
+   print('Sorry, we\'ve got some problems.')
+
+my_data = query_account(user)
 
 # Function copied from:
 # https://stackoverflow.com/questions/33188413/python-code-to-convert-from-objectsid-to-sid-representation
@@ -56,7 +64,16 @@ def convert_sid(binary):
     return string
 
 def query_account(acct_name):
-   criteria = "(&(objectClass=user)(sAMAccountName={}))".format(acct_name)
+   criteria = f"(&(objectClass=user)(sAMAccountName={acct_name}))"
+   attributes = None
+   result = l.search_s(base, ldap.SCOPE_SUBTREE, criteria, attributes)
+ 
+   results = [entry for dn, entry in result if isinstance(entry, dict)]
+   data = results[0] if len(results) == 1 else {}
+   return data
+
+def query_account_by_email(mail_address):
+   criteria = f"(&(objectClass=user)(mail={mail_address}))"
    attributes = None
    result = l.search_s(base, ldap.SCOPE_SUBTREE, criteria, attributes)
  
@@ -66,7 +83,7 @@ def query_account(acct_name):
 
 
 def query_groups(acct_name):
-   criteria = "(&(objectClass=user)(sAMAccountName={}))".format(acct_name)
+   criteria = f"(&(objectClass=user)(sAMAccountName={acct_name}))"
    attributes = ['memberOf']
    result = l.search_s(base, ldap.SCOPE_SUBTREE, criteria, attributes)
  
