@@ -1,6 +1,25 @@
+#!/usr/bin/env python3
+# profredes.py
+# This file is part of Explorado
+#
+# Copyright (C) 2020 - Jurandy Soares
+#
+# Explorado is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# Explorado is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Explorado. If not, see <http://www.gnu.org/licenses/>.
+#
+
 import bs4
 import requests
-from slugify import slugify
 
 campus_abrev = {
     'apodi': 'Apodi',
@@ -25,12 +44,9 @@ class Professor:
     def __init__(self, titulo, site, abr_campus):
         self.titulo = titulo
         self.site = site
-        uri = site.rsplit('/', maxsplit=1)[-1]
-        nome,sobrenome = titulo.lower().split()
-        slug_nome = uri[slice(len(nome))]
-        slug_sobrenome = uri[slice(len(nome), len(uri))]
-        self.id = f'{slug_nome}.{slug_sobrenome}'
-        self.email = f'{self.id}@ifrn.edu.br'
+        self.nome,self.sobrenome = titulo.lower().split()
+        self.email = self._get_email()
+        self._id = self.email.split('@')[0]
         self.campus = campus_abrev.get(abr_campus, 'Desconhecido')
 
     def __str__(self):
@@ -38,6 +54,12 @@ class Professor:
 
     def __repr__(self):
         return f'{self.titulo} <{self.email}>'
+
+    def _get_email(self) -> str:
+        pag_prof = requests.get(self.site).content
+        anal_pag = bs4.BeautifulSoup(pag_prof, 'html.parser')
+        res_buscas = anal_pag.find_all('li', {'class': 'info-email'})
+        return res_buscas[0].a.text.strip()
 
 
 URL = 'http://docentes.ifrn.edu.br/'
@@ -55,7 +77,7 @@ def principal():
         novo_professor = Professor(titulo=enlace['title'],
                                    site=enlace['href'],
                                    abr_campus=abr_campus)
-        professores[novo_professor.id] = novo_professor
+        professores[novo_professor._id] = novo_professor
 
 if __name__ == "__main__":
     principal()
