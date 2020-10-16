@@ -24,28 +24,6 @@ DOMAIN = '' # The value of USERDNSDOMAIN environment variable
 DOMAIN = DOMAIN.lower()
 base = 'dc='+',dc='.join(DOMAIN.split('.'))
 
-user = ''
-cont = 3
-while (not user) and (cont > 0):
-    user = input('Username: ')
-    cont -= 1
-
-if not user: sys.exit(1)
-
-password = getpass.getpass()
-
-l = ldap.initialize('ldap://{}'.format(SERVER))
-try:
-   l.protocol_version = ldap.VERSION3
-   l.set_option(ldap.OPT_REFERRALS, 0)
-   bind = l.simple_bind_s(user+"@"+DOMAIN, password)
-   del password # To avoid memory leak
-   atexit.register(lambda: l.unbind())
-
-except:
-   print('Sorry, we\'ve got some problems.')
-
-my_data = query_account(user)
 
 # Function copied from:
 # https://stackoverflow.com/questions/33188413/python-code-to-convert-from-objectsid-to-sid-representation
@@ -97,3 +75,28 @@ def query_groups(acct_name):
          groups.append(group_name)
    
    return groups
+
+user = ''
+cont = 3
+while (not user) and (cont > 0):
+    user = input('Username: ')
+    cont -= 1
+
+if not user: sys.exit(1)
+
+password = getpass.getpass()
+
+l = ldap.initialize('ldap://{}'.format(SERVER))
+try:
+   l.protocol_version = ldap.VERSION3
+   l.set_option(ldap.OPT_REFERRALS, 0)
+   bind = l.simple_bind_s(user+"@"+DOMAIN, password)
+   del password # To avoid memory leak
+   atexit.register(lambda: l.unbind())
+
+except:
+   print('Sorry, we\'ve got some problems.')
+
+my_data = query_account(user)
+
+
