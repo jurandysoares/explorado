@@ -38,7 +38,8 @@ try:
     l.set_option( ldap.OPT_X_TLS_DEMAND, True )
     l.set_option( ldap.OPT_DEBUG_LEVEL, 255 )
     bind = l.simple_bind_s(user+"@"+DOMAIN, password)
-    atexit.register(lambda: l.unbind())
+    del password
+    atexit.register(lambda l: l.unbind())
 
 except:
     print('Sorry, we\'ve got some problem.')
