@@ -34,54 +34,59 @@ try:
     l = ldap.initialize('ldaps://{}'.format(SERVER))
     l.set_option(ldap.OPT_REFERRALS, 0)
     l.set_option(ldap.OPT_PROTOCOL_VERSION, 3)
-    l.set_option(ldap.OPT_X_TLS,ldap.OPT_X_TLS_DEMAND)
-    l.set_option( ldap.OPT_X_TLS_DEMAND, True )
-    l.set_option( ldap.OPT_DEBUG_LEVEL, 255 )
-    bind = l.simple_bind_s(user+"@"+DOMAIN, password)
+    l.set_option(ldap.OPT_X_TLS, ldap.OPT_X_TLS_DEMAND)
+    l.set_option(ldap.OPT_X_TLS_DEMAND, True)
+    l.set_option(ldap.OPT_DEBUG_LEVEL, 255)
+    bind = l.simple_bind_s(user + "@" + DOMAIN, password)
     del password
-    atexit.register(lambda l: l.unbind())
+    atexit.register(lambda: l.unbind())
 
-except:
-    print('Sorry, we\'ve got some problem.')
+except ldap.INVALID_CREDENTIALS:
+    print('Invalid credentials')
+    sys.exit(1)
+except ldap.SERVER_DOWN:
+    print('LDAP server is unavailable')
+    sys.exit(1)
+except Exception as e:
+    print(f'Sorry, we\'ve got some problem: {e}')
+    sys.exit(1)
 
-# Function copied from:
-# https://stackoverflow.com/questions/33188413/python-code-to-convert-from-objectsid-to-sid-representation
+# Function to convert from binary SID to SID string representation
 def convert_sid(binary):
-    version = struct.unpack('B', binary[0])[0]
+    version = struct.unpack('B', binary[0:1])[0]
     # I do not know how to treat version != 1 (it does not exist yet)
     assert version == 1, version
-    length = struct.unpack('B', binary[1])[0]
-    authority = struct.unpack('>Q', '\x00\x00' + binary[2:8])[0]
+    length = struct.unpack('B', binary[1:2])[0]
+    authority = struct.unpack('>Q', b'\x00\x00' + binary[2:8])[0]
     string = 'S-%d-%d' % (version, authority)
     binary = binary[8:]
     assert len(binary) == 4 * length
-    for i in xrange(length):
+    for i in range(length):
         value = struct.unpack('<L', binary[4*i:4*(i+1)])[0]
         string += '-%d' % (value)
     return string
 
 def query_account(acct_name):
-   criteria = "(&(objectClass=user)(sAMAccountName={}))".format(acct_name)
-   attributes = None
-   result = l.search_s(base, ldap.SCOPE_SUBTREE, criteria, attributes)
+    criteria = "(&(objectClass=user)(sAMAccountName={}))".format(acct_name)
+    attributes = None
+    result = l.search_s(base, ldap.SCOPE_SUBTREE, criteria, attributes)
 
-   results = [entry for dn, entry in result if isinstance(entry, dict)]
-   data = results[0] if len(results) == 1 else {}
-   return data
-
+    results = [entry for dn, entry in result if isinstance(entry, dict)]
+    data = results[0] if len(results) == 1 else {}
+    return data
 
 def query_groups(acct_name):
-   criteria = "(&(objectClass=user)(sAMAccountName={}))".format(acct_name)
-   attributes = ['memberOf']
-   result = l.search_s(base, ldap.SCOPE_SUBTREE, criteria, attributes)
+    criteria = "(&(objectClass=user)(sAMAccountName={}))".format(acct_name)
+    attributes = ['memberOf']
+    result = l.search_s(base, ldap.SCOPE_SUBTREE, criteria, attributes)
 
-   results = [entry for dn, entry in result if isinstance(entry, dict)]
-   data = results[0] if len(results) == 1 else {}
-   dn_groups = data['memberOf']
-   groups = []
-   for dn_g in dn_groups:
-      group_name = dn_g.split(',')[0].split('=')[1].lower()
-      if not ' ' in group_name:
-         groups.append(group_name)
+    results = [entry for dn, entry in result if isinstance(entry, dict)]
+    data = results[0] if len(results) == 1 else {}
+    dn_groups = data.get('memberOf', [])
+    groups = []
+    for dn_g in dn_groups:
+        group_name = dn_g.split(',')[0].split('=')[1].lower()
+        if ' ' not in group_name:
+            groups.append(group_name)
 
-   return groups
+    return groups
